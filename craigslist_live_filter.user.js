@@ -16,17 +16,28 @@ clfDiv.innerHTML = "<span>Filter:   </span>" +
   "<input type='radio' name='CLFhidetype' value='hide' id='CLFhide' style='vertical-align: middle;' /><span>hide&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;</span>" +
   "<input type='checkbox' name='CLFsearchinverttype' value='invert' id='CLFsearchinvert' style='vertical-align: middle;' /><span>invert</span>"
 
-var clfDiv3 = document.createElement('br');
-var clfDiv2 = document.createElement('textarea');
+var clfBr = document.createElement('br');
 
-clfDiv2.cols = 48;
-clfDiv2.rows = 3;
-clfDiv2.spellcheck = false;
-clfDiv2.addEventListener("keyup", updateFilter, false);
-clfDiv.appendChild(clfDiv3);
-clfDiv.appendChild(clfDiv2);
+//create exclude text element with properties
+var clfExcludeText = document.createElement('textarea');
+
+clfExcludeText.cols = 48;
+clfExcludeText.rows = 2;
+clfExcludeText.spellcheck = false;
+clfExcludeText.addEventListener("keyup", updateFilter, false);
+
+//includetext element is exact duplicate of exclude
+var clfIncludeText = clfExcludeText.cloneNode();
+clfIncludeText.addEventListener("keyup", updateFilter, false);
+
+//append everything into the div`
+clfDiv.appendChild(clfBr);
+clfDiv.appendChild(clfExcludeText);
+clfDiv.appendChild(clfBr.cloneNode());
+clfDiv.appendChild(clfIncludeText);
 
 document.body.appendChild(clfDiv);
+
 document.getElementById("CLFregex").addEventListener("click", updateFilterType, false);
 document.getElementById("CLFwords").addEventListener("click", updateFilterType, false);
 document.getElementById("CLFgray").addEventListener("click", updateFilterType, false);
@@ -50,6 +61,8 @@ addGlobalStyle(
   "div#clfDiv textarea {\n" +
   "  font-family: sans-serif;\n" +
   "  font-size: 1.1em;\n" +
+  "  background-color: #ffffff;\n" +
+  "  opacity: 0.700\n" +
   "}\n\n" +
 
   "blockquote p {\n" +
@@ -106,10 +119,15 @@ for (var i = listings.snapshotLength - 1; i >= 0; i--) {
 }
 
 // -- get stored user settings
-var CLFtext = GM_getValue("CLFtext", "");
-if (CLFtext != "") {
-  clfDiv2.value = CLFtext;
+var CLFexcludetext = GM_getValue("CLFexcludetext", "");
+if (CLFexcludetext != "") {
+  clfExcludeText.value = CLFexcludetext;
   updateFilter();
+}
+var CLFincludetext = GM_getValue("CLFincludetext", "");
+if (CLFincludetext != "") {
+   clfIncludeText.value = CLFincludetext;
+   updateFilter();
 }
 
 var CLFregex = GM_getValue("CLFregex", true);
@@ -117,90 +135,120 @@ if (!CLFregex) {
   document.getElementById("CLFwords").checked = true;
   updateFilter();
 }
+
 var CLFgray  = GM_getValue("CLFgray", true);
 if (!CLFgray) {
   document.getElementById("CLFhide").checked = true;
   updateFilter();
 }
+
 var CLFsearchinvert = GM_getValue("CLFsearchinvert", false);  //default is false to maintain author's original behavior
 if (CLFsearchinvert) {
    document.getElementById('CLFsearchinvert').checked = CLFsearchinvert;
    updateFilter();
 }
 
+function fixRegex(regex) {
+  var filterRegex = document.getElementById("CLFregex").checked;
+  if ( filterRegex ) {
+    //detect and tweak bad input
+    regString = regex.replace(/[|(]+$/, "")
+  } else {
+    regString = regex.replace(/[,\s]+$/, "").replace(/,\s?(?=[^,\s])/g, "|")
+  }
 
-function updateFilterType(event) {
-  //store user settings
-  GM_setValue("CLFregex", document.getElementById("CLFregex").checked);
-  GM_setValue("CLFgray", document.getElementById("CLFgray").checked);
-  GM_setValue("CLFsearchinvert", document.getElementById("CLFsearchinvert").checked);
-  updateFilter(event);
+  return regString;
 }
 
 
-function updateFilter(event) {
-  // Reset display, who knows what the user typed/untyped!
+function updateFilterType(event) {
+   //store user settings
+   GM_setValue("CLFregex", document.getElementById("CLFregex").checked);
+   GM_setValue("CLFgray", document.getElementById("CLFgray").checked);
+   GM_setValue("CLFsearchinvert", document.getElementById("CLFsearchinvert").checked);
+   updateFilter(event);
+}
+
+function resetDisplay() {
+  //---Reset display, who knows what the user typed/untyped!
   for (var i = listings.snapshotLength - 1; i >= 0; i--) {
-    var listing = listings.snapshotItem(i);
-    listing.setAttribute("class", 'filterOK');
-    listing.style.display = "block";
+     var listing = listings.snapshotItem(i);
+     listing.setAttribute("class", 'filterOK');
+     listing.style.display = "block";
   }
   
   var inversions = document.evaluate("//*[@class='CLFinvert']",
     document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
   for (var i = inversions.snapshotLength - 1; i >= 0; i--) {
-    var inversion = inversions.snapshotItem(i);
-    inversion.parentNode.replaceChild(document.createTextNode(inversion.innerHTML), inversion);
+     var inversion = inversions.snapshotItem(i);
+     inversion.parentNode.replaceChild(document.createTextNode(inversion.innerHTML), inversion);
   }
-  
-  
+
+  var inversions = document.evaluate("//*[@class='CLFactiveinvert']",
+    document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+  for (var i = inversions.snapshotLength - 1; i >= 0; i--) {
+     var inversion = inversions.snapshotItem(i);
+     inversion.parentNode.replaceChild(document.createTextNode(inversion.innerHTML), inversion);
+  }
+}
+
+
+function updateFilter(event) {
+
+  //reset all of the existing mods to the display
+  resetDisplay();
+
   // If blank, leave page "cleaned up"
-  if (clfDiv2.value == "") { return false; }
-  
-  filterRegex = document.getElementById("CLFregex").checked;
-  filterGray = document.getElementById("CLFgray").checked;
-  filterInvert = document.getElementById("CLFsearchinvert").checked;
-
-  console.log(filterInvert);
-
-  if ( filterRegex ) {
-    //detect and tweak bad input
-    regString = clfDiv2.value.replace(/[|(]+$/, "")
-    var regex = new RegExp(regString);
-  } else {
-    regString = clfDiv2.value.replace(/[,\s]+$/, "").replace(/,\s?(?=[^,\s])/g, "|")
-    var regex = new RegExp(regString);
+  if ( (clfExcludeText.value == "") && (clfIncludeText.value == "") ) { 
+     return false; 
   }
+
+  // TODO: if disabled, leave page cleaned up
   
+
+  var filterGray = document.getElementById("CLFgray").checked;
+  var filterInvert = document.getElementById("CLFsearchinvert").checked;
+
+  regString = fixRegex(clfExcludeText.value);
+  var excluderegex = new RegExp(regString);
+  regString = fixRegex(clfIncludeText.value);
+  var includeregex = new RegExp(regString);
+
+  console.log(excluderegex, includeregex);
+
   for (var i = listings.snapshotLength - 1; i >= 0; i--) {
     var listing = listings.snapshotItem(i);
     for (var j = listing.childNodes.length - 1; j >= 0; j--) {
       if ( listing.childNodes[j].nodeName == "A" ||
            listing.childNodes[j].nodeName == "FONT" ) {
-        if (!filterInvert) {
-           //discard what the user is looking for
-           if ( listing.childNodes[j].innerHTML.match(regex) ) {
-              //make what the user is looking for gray or remove it
+
+        if (excluderegex != "") {
+           //discard what the user wants to exclude
+           if ( listing.childNodes[j].innerHTML.match(excluderegex) ) {
+              //make what the user wants to exclude gray or remove it
               if (filterGray) {
                  listing.setAttribute("class", 'filterOut');
-                 listing.childNodes[j].innerHTML = listing.childNodes[j].innerHTML.replace(regex, "<span class='CLFinvert'>$&</span>");
-                 break;
+                 listing.childNodes[j].innerHTML = listing.childNodes[j].innerHTML.replace(excluderegex, "<span class='CLFinvert'>$&</span>");
+                 break;  //exclude matched and we are done!
               } else {
                  listing.style.display = "none";
                  break;
               }
-           }
-        } else {
-           //keep what the user is looking for
-           if ( listing.childNodes[j].innerHTML.match(regex) ) {
+           } 
+        }
+
+        if (includeregex != "") {
+           // keep want the user wants to include
+
+           if ( listing.childNodes[j].innerHTML.match(includeregex) ) {
+              console.log(listing.childNodes[j]);
               //highlight what the user is looking for
-              listing.childNodes[j].innerHTML = listing.childNodes[j].innerHTML.replace(regex, "<span class='CLFactiveinvert'>$&</span>");
+              listing.childNodes[j].innerHTML = listing.childNodes[j].innerHTML.replace(includeregex, "<span class='CLFactiveinvert'>$&</span>");
               break;
-           }
-           else {
+           } else {
               //make the other stuff gray or remove it
               if (filterGray) {
-                 listing.setAttribute("class", 'filterOut');
+                 //listing.setAttribute("class", 'filterOut');
                  break;
               } else {
                  listing.style.display = "none";
@@ -208,22 +256,24 @@ function updateFilter(event) {
               }
            }
         }
+
       }
     }
   }
   
-  var adjustedHeight = clfDiv2.clientHeight;
+  var adjustedHeight = clfExcludeText.clientHeight;
   var maxHeight = 500
   if ( !maxHeight || maxHeight > adjustedHeight )
   {
-    adjustedHeight = Math.max(clfDiv2.scrollHeight, adjustedHeight);
+    adjustedHeight = Math.max(clfExcludeText.scrollHeight, adjustedHeight);
     if ( maxHeight )
       adjustedHeight = Math.min(maxHeight, adjustedHeight+5);
-    if ( adjustedHeight > clfDiv2.clientHeight+5 )
-      clfDiv2.style.height = adjustedHeight + "px";
+    if ( adjustedHeight > clfExcludeText.clientHeight+5 )
+      clfExcludeText.style.height = adjustedHeight + "px";
   }
   
-  GM_setValue("CLFtext", clfDiv2.value);
+  GM_setValue("CLFexcludetext", clfExcludeText.value);
+  GM_setValue("CLFincludetext", clfIncludeText.value);
 }
 
 
