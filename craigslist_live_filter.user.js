@@ -161,101 +161,103 @@ function resetDisplay() {
 
 function updateFilter(event) {
 
-  //reset all of the existing mods to the display
-  resetDisplay();
+   //reset all of the existing mods to the display
+   resetDisplay();
 
-  // If blank, leave page "cleaned up"
-  if ( (clfExcludeText.value == "") && (clfIncludeText.value == "") ) { 
+   // If blank, leave page "cleaned up"
+   if ( (clfExcludeText.value == "") && (clfIncludeText.value == "") ) { 
      return false; 
-  }
+   }
 
-  // TODO: if disabled, leave page cleaned up
-  
+   // TODO: if disabled, leave page cleaned up
 
-  var filterGray = document.getElementById("CLFgray").checked;
-  var filterInvert = document.getElementById("CLFsearchinvert").checked;
 
-  regString = fixRegex(clfExcludeText.value);
-  var excluderegex = new RegExp(regString);
-  regString = fixRegex(clfIncludeText.value);
-  var includeregex = new RegExp(regString);
+   var filterGray = document.getElementById("CLFgray").checked;
+   var filterInvert = document.getElementById("CLFsearchinvert").checked;
 
-  console.log(excluderegex, includeregex);
+   regString = fixRegex(clfExcludeText.value);
+   var excluderegex = new RegExp(regString);
+   regString = fixRegex(clfIncludeText.value);
+   var includeregex = new RegExp(regString);
 
-  for (var i = listings.snapshotLength - 1; i >= 0; i--) {
-    var listing = listings.snapshotItem(i);
-    for (var j = listing.childNodes.length - 1; j >= 0; j--) {
-      if ( listing.childNodes[j].nodeName == "A" ||
-           listing.childNodes[j].nodeName == "FONT" ) {
+   console.log(excluderegex, includeregex);
 
-        if (excluderegex != "") {
-           //discard what the user wants to exclude
-           if ( listing.childNodes[j].innerHTML.match(excluderegex) ) {
-              //make what the user wants to exclude gray or remove it
-              if (filterGray) {
-                 listing.setAttribute("class", 'filterOut');
-                 listing.childNodes[j].innerHTML = listing.childNodes[j].innerHTML.replace(excluderegex, "<span class='CLFinvert'>$&</span>");
-                 break;  //exclude matched and we are done!
-              } else {
-                 listing.style.display = "none";
-                 break;
-              }
-           } 
-        }
+   for (var i = listings.snapshotLength - 1; i >= 0; i--) {
+      var listing = listings.snapshotItem(i);
+      console.log(listing.childNodes);
+      for (var j = listing.childNodes.length - 1; j >= 0; j--) {
+         if (    listing.childNodes[j].nodeName == "A"
+              || listing.childNodes[j].nodeName == "FONT" ) 
+         {
 
-        if (includeregex != "") {
-           // keep want the user wants to include
+            if (clfExcludeText.value != "") {
+               //discard what the user wants to exclude
+               if ( listing.childNodes[j].innerHTML.match(excluderegex) ) {
+                  //make what the user wants to exclude gray or remove it
+                  if (filterGray) {
+                     listing.setAttribute("class", 'filterOut');
+                     listing.childNodes[j].innerHTML = listing.childNodes[j].innerHTML.replace(excluderegex, "<span class='CLFinvert'>$&</span>");
+                     break;  //exclude matched and we are done!
+                  } else {
+                     listing.style.display = "none";
+                     break;
+                  }
+               } 
+            }
 
-           if ( listing.childNodes[j].innerHTML.match(includeregex) ) {
-              console.log(listing.childNodes[j]);
-              //highlight what the user is looking for
-              listing.childNodes[j].innerHTML = listing.childNodes[j].innerHTML.replace(includeregex, "<span class='CLFactiveinvert'>$&</span>");
-              break;
-           } else {
-              //make the other stuff gray or remove it
-              if (filterGray) {
-                 //listing.setAttribute("class", 'filterOut');
-                 break;
-              } else {
-                 listing.style.display = "none";
-                 break;
-              }
-           }
-        }
+            if (clfIncludeText.value != "") {
+               // keep want the user wants to include
 
+               if ( listing.childNodes[j].innerHTML.match(includeregex) ) {
+                  console.log(listing.childNodes[j]);
+                  //highlight what the user is looking for
+                  listing.childNodes[j].innerHTML = listing.childNodes[j].innerHTML.replace(includeregex, "<span class='CLFactiveinvert'>$&</span>");
+                  break;
+               } else {
+                  //make the other stuff gray or remove it
+                  if (filterGray) {
+                     //listing.setAttribute("class", 'filterOut');
+                     break;
+                  } else {
+                     listing.style.display = "none";
+                     break;
+                  }
+               }
+            }
+
+         }
       }
-    }
-  }
-  
-  var adjustedHeight = clfExcludeText.clientHeight;
-  var maxHeight = 500
-  if ( !maxHeight || maxHeight > adjustedHeight )
-  {
-    adjustedHeight = Math.max(clfExcludeText.scrollHeight, adjustedHeight);
-    if ( maxHeight )
-      adjustedHeight = Math.min(maxHeight, adjustedHeight+5);
-    if ( adjustedHeight > clfExcludeText.clientHeight+5 )
-      clfExcludeText.style.height = adjustedHeight + "px";
-  }
-  
-  GM_setValue("CLFexcludetext", clfExcludeText.value);
-  GM_setValue("CLFincludetext", clfIncludeText.value);
+   }
+
+   var adjustedHeight = clfExcludeText.clientHeight;
+   var maxHeight = 500
+
+   if ( !maxHeight || maxHeight > adjustedHeight ) {
+      adjustedHeight = Math.max(clfExcludeText.scrollHeight, adjustedHeight);
+      if ( maxHeight )
+         adjustedHeight = Math.min(maxHeight, adjustedHeight+5);
+      if ( adjustedHeight > clfExcludeText.clientHeight+5 )
+         clfExcludeText.style.height = adjustedHeight + "px";
+   }
+
+   GM_setValue("CLFexcludetext", clfExcludeText.value);
+   GM_setValue("CLFincludetext", clfIncludeText.value);
 }
 
 function addGlobalStyle(css) {
-  try {
-    var elmHead, elmStyle;
-    elmHead = document.getElementsByTagName('head')[0];
-    elmStyle = document.createElement('style');
-    elmStyle.type = 'text/css';
-    elmHead.appendChild(elmStyle);
-    elmStyle.innerHTML = css;
-  } catch (e) {
-    if (!document.styleSheets.length) {
-      document.createStyleSheet();
-    }
+   try {
+      var elmHead, elmStyle;
+      elmHead = document.getElementsByTagName('head')[0];
+      elmStyle = document.createElement('style');
+      elmStyle.type = 'text/css';
+      elmHead.appendChild(elmStyle);
+      elmStyle.innerHTML = css;
+   } catch (e) {
+      if (!document.styleSheets.length) {
+         document.createStyleSheet();
+      }
       document.styleSheets[0].cssText += css;
-  }
+   }
 }
 
 function main() {
