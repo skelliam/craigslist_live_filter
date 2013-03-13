@@ -7,44 +7,9 @@
 
 // v1.2
 
-var clfDiv = document.createElement('div');
-clfDiv.setAttribute("id", "clfDiv");
-clfDiv.innerHTML = "<span>Filter:   </span>" +
-  "<input type='radio' name='CLFfiltertype' value='regex' id='CLFregex' style='vertical-align: middle;' checked='checked' /><span>regex  </span>" +
-  "<input type='radio' name='CLFfiltertype' value='words' id='CLFwords' style='vertical-align: middle;' /><span>words&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;</span>" +
-  "<input type='radio' name='CLFhidetype' value='gray' id='CLFgray' style='vertical-align: middle;' checked='checked' /><span>gray  </span>" +
-  "<input type='radio' name='CLFhidetype' value='hide' id='CLFhide' style='vertical-align: middle;' /><span>hide&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;</span>" +
-  "<input type='checkbox' name='CLFsearchinverttype' value='invert' id='CLFsearchinvert' style='vertical-align: middle;' /><span>invert</span>"
+var clfDiv, clfBr, clfExcludeText, clfIncludeText, listings;
 
-var clfBr = document.createElement('br');
-
-//create exclude text element with properties
-var clfExcludeText = document.createElement('textarea');
-
-clfExcludeText.cols = 48;
-clfExcludeText.rows = 2;
-clfExcludeText.spellcheck = false;
-clfExcludeText.addEventListener("keyup", updateFilter, false);
-
-//includetext element is exact duplicate of exclude
-var clfIncludeText = clfExcludeText.cloneNode();
-clfIncludeText.addEventListener("keyup", updateFilter, false);
-
-//append everything into the div`
-clfDiv.appendChild(clfBr);
-clfDiv.appendChild(clfExcludeText);
-clfDiv.appendChild(clfBr.cloneNode());
-clfDiv.appendChild(clfIncludeText);
-
-document.body.appendChild(clfDiv);
-
-document.getElementById("CLFregex").addEventListener("click", updateFilterType, false);
-document.getElementById("CLFwords").addEventListener("click", updateFilterType, false);
-document.getElementById("CLFgray").addEventListener("click", updateFilterType, false);
-document.getElementById("CLFhide").addEventListener("click", updateFilterType, false);
-document.getElementById("CLFsearchinvert").addEventListener("click", updateFilterType, false);
-
-addGlobalStyle(
+var cssText = 
   "div#clfDiv {\n" +
   "  position: fixed;\n" +
   "  bottom: 5px;\n" +
@@ -101,51 +66,52 @@ addGlobalStyle(
   ".CLFinvert {\n" +
   "  background-color: #CCCCCC;\n" +
   "  color: #FFFFFF;\n" +
-  "}\n"
-);
+  "}\n";
 
-var listings = document.evaluate("//blockquote[3]/p",
-    document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
-  
-for (var i = listings.snapshotLength - 1; i >= 0; i--) {
-  var listing = listings.snapshotItem(i);
-  for (var j = listing.childNodes.length - 1; j >= 0; j--) {
-    if ( listing.childNodes[j].nodeName == "A" ) {
-      listing.childNodes[j].innerHTML = listing.childNodes[j].innerHTML.toLowerCase();
-      //listing.childNodes[j].innerHTML = listing.childNodes[j].innerHTML.replace(/[\x80-\xFFFF]/g, "X");
-    }
-    if ( listing.childNodes[j].nodeName == "FONT" ) { listing.childNodes[j].innerHTML = listing.childNodes[j].innerHTML.toLowerCase(); }
-  }
+function getListings() {
+   listings = document.evaluate("//blockquote[3]/p",
+       document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+     
+   for (var i = listings.snapshotLength - 1; i >= 0; i--) {
+     var listing = listings.snapshotItem(i);
+     for (var j = listing.childNodes.length - 1; j >= 0; j--) {
+       if ( listing.childNodes[j].nodeName == "A" ) {
+         listing.childNodes[j].innerHTML = listing.childNodes[j].innerHTML.toLowerCase();
+         //listing.childNodes[j].innerHTML = listing.childNodes[j].innerHTML.replace(/[\x80-\xFFFF]/g, "X");
+       }
+       if ( listing.childNodes[j].nodeName == "FONT" ) { listing.childNodes[j].innerHTML = listing.childNodes[j].innerHTML.toLowerCase(); }
+     }
+   }
 }
 
-// -- get stored user settings
-var CLFexcludetext = GM_getValue("CLFexcludetext", "");
-if (CLFexcludetext != "") {
-  clfExcludeText.value = CLFexcludetext;
-  updateFilter();
-}
-var CLFincludetext = GM_getValue("CLFincludetext", "");
-if (CLFincludetext != "") {
-   clfIncludeText.value = CLFincludetext;
-   updateFilter();
-}
 
-var CLFregex = GM_getValue("CLFregex", true);
-if (!CLFregex) {
-  document.getElementById("CLFwords").checked = true;
-  updateFilter();
-}
+function getUserSettings() {
+   // -- get stored user settings
+   var CLFexcludetext = GM_getValue("CLFexcludetext", "");
+   console.log("excludetext: ", CLFexcludetext);
+   if (CLFexcludetext != "") {
+     clfExcludeText.value = CLFexcludetext;
+   }
+   var CLFincludetext = GM_getValue("CLFincludetext", "");
+   console.log("includetext: ", CLFincludetext);
+   if (CLFincludetext != "") {
+      clfIncludeText.value = CLFincludetext;
+   }
 
-var CLFgray  = GM_getValue("CLFgray", true);
-if (!CLFgray) {
-  document.getElementById("CLFhide").checked = true;
-  updateFilter();
-}
+   var CLFregex = GM_getValue("CLFregex", true);
+   if (!CLFregex) {
+     document.getElementById("CLFwords").checked = true;
+   }
 
-var CLFsearchinvert = GM_getValue("CLFsearchinvert", false);  //default is false to maintain author's original behavior
-if (CLFsearchinvert) {
-   document.getElementById('CLFsearchinvert').checked = CLFsearchinvert;
-   updateFilter();
+   var CLFgray  = GM_getValue("CLFgray", true);
+   if (!CLFgray) {
+     document.getElementById("CLFhide").checked = true;
+   }
+
+   var CLFsearchinvert = GM_getValue("CLFsearchinvert", false);  //default is false to maintain author's original behavior
+   if (CLFsearchinvert) {
+      document.getElementById('CLFsearchinvert').checked = CLFsearchinvert;
+   }
 }
 
 function fixRegex(regex) {
@@ -276,7 +242,6 @@ function updateFilter(event) {
   GM_setValue("CLFincludetext", clfIncludeText.value);
 }
 
-
 function addGlobalStyle(css) {
   try {
     var elmHead, elmStyle;
@@ -292,3 +257,50 @@ function addGlobalStyle(css) {
       document.styleSheets[0].cssText += css;
   }
 }
+
+function main() {
+   addGlobalStyle(cssText);
+
+   clfDiv = document.createElement('div');
+   clfDiv.setAttribute("id", "clfDiv");
+   clfDiv.innerHTML = "<span>Filter:   </span>" +
+     "<input type='radio' name='CLFfiltertype' value='regex' id='CLFregex' style='vertical-align: middle;' checked='checked' /><span>regex  </span>" +
+     "<input type='radio' name='CLFfiltertype' value='words' id='CLFwords' style='vertical-align: middle;' /><span>words&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;</span>" +
+     "<input type='radio' name='CLFhidetype' value='gray' id='CLFgray' style='vertical-align: middle;' checked='checked' /><span>gray  </span>" +
+     "<input type='radio' name='CLFhidetype' value='hide' id='CLFhide' style='vertical-align: middle;' /><span>hide&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;</span>" +
+     "<input type='checkbox' name='CLFsearchinverttype' value='invert' id='CLFsearchinvert' style='vertical-align: middle;' /><span>invert</span>"
+
+   clfBr = document.createElement('br');
+
+   //create exclude text element with properties
+   clfExcludeText = document.createElement('textarea');
+
+   clfExcludeText.cols = 48;
+   clfExcludeText.rows = 2;
+   clfExcludeText.spellcheck = false;
+   clfExcludeText.addEventListener("keyup", updateFilter, false);
+
+   //includetext element is exact duplicate of excludetext
+   clfIncludeText = clfExcludeText.cloneNode();
+   clfIncludeText.addEventListener("keyup", updateFilter, false);
+
+   //append everything into the div`
+   clfDiv.appendChild(clfBr);
+   clfDiv.appendChild(clfExcludeText);
+   clfDiv.appendChild(clfBr.cloneNode());
+   clfDiv.appendChild(clfIncludeText);
+
+   document.body.appendChild(clfDiv);
+
+   document.getElementById("CLFregex").addEventListener("click", updateFilterType, false);
+   document.getElementById("CLFwords").addEventListener("click", updateFilterType, false);
+   document.getElementById("CLFgray").addEventListener("click", updateFilterType, false);
+   document.getElementById("CLFhide").addEventListener("click", updateFilterType, false);
+   document.getElementById("CLFsearchinvert").addEventListener("click", updateFilterType, false);
+
+   getUserSettings();
+   getListings();
+   updateFilter();
+}
+
+main();
