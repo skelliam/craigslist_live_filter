@@ -88,12 +88,10 @@ function getListings() {
 function getUserSettings() {
    // -- get stored user settings
    var CLFexcludetext = GM_getValue("CLFexcludetext", "");
-   console.log("excludetext: ", CLFexcludetext);
    if (CLFexcludetext != "") {
      clfExcludeText.value = CLFexcludetext;
    }
    var CLFincludetext = GM_getValue("CLFincludetext", "");
-   console.log("includetext: ", CLFincludetext);
    if (CLFincludetext != "") {
       clfIncludeText.value = CLFincludetext;
    }
@@ -108,9 +106,9 @@ function getUserSettings() {
      document.getElementById("CLFhide").checked = true;
    }
 
-   var CLFsearchinvert = GM_getValue("CLFsearchinvert", false);  //default is false to maintain author's original behavior
-   if (CLFsearchinvert) {
-      document.getElementById('CLFsearchinvert').checked = CLFsearchinvert;
+   var CLFdisable = GM_getValue("CLFdisable", false);  //default is false to maintain author's original behavior
+   if (CLFdisable) {
+      document.getElementById('CLFdisable').checked = CLFdisable;
    }
 }
 
@@ -126,12 +124,19 @@ function fixRegex(regex) {
   return regString;
 }
 
+function disableToggle() {
+   var stat = document.getElementById("CLFdisable").checked;
+   clfExcludeText.disabled = stat;
+   clfIncludeText.disabled = stat;
+}
+
 
 function updateFilterType(event) {
    //store user settings
    GM_setValue("CLFregex", document.getElementById("CLFregex").checked);
    GM_setValue("CLFgray", document.getElementById("CLFgray").checked);
-   GM_setValue("CLFsearchinvert", document.getElementById("CLFsearchinvert").checked);
+   GM_setValue("CLFdisable", document.getElementById("CLFdisable").checked);
+   disableToggle();
    updateFilter(event);
 }
 
@@ -164,27 +169,24 @@ function updateFilter(event) {
    //reset all of the existing mods to the display
    resetDisplay();
 
+   var filterGray = document.getElementById("CLFgray").checked;
+   var filterDisable = document.getElementById("CLFdisable").checked;
+
    // If blank, leave page "cleaned up"
-   if ( (clfExcludeText.value == "") && (clfIncludeText.value == "") ) { 
+   if (     ((clfExcludeText.value == "") && (clfIncludeText.value == ""))
+         || (filterDisable)
+      ) { 
      return false; 
    }
 
-   // TODO: if disabled, leave page cleaned up
-
-
-   var filterGray = document.getElementById("CLFgray").checked;
-   var filterInvert = document.getElementById("CLFsearchinvert").checked;
 
    regString = fixRegex(clfExcludeText.value);
    var excluderegex = new RegExp(regString);
    regString = fixRegex(clfIncludeText.value);
    var includeregex = new RegExp(regString);
 
-   console.log(excluderegex, includeregex);
-
    for (var i = listings.snapshotLength - 1; i >= 0; i--) {
       var listing = listings.snapshotItem(i);
-      console.log(listing.childNodes);
       for (var j = listing.childNodes.length - 1; j >= 0; j--) {
          if (    listing.childNodes[j].nodeName == "A"
               || listing.childNodes[j].nodeName == "FONT" ) 
@@ -209,7 +211,6 @@ function updateFilter(event) {
                // keep want the user wants to include
 
                if ( listing.childNodes[j].innerHTML.match(includeregex) ) {
-                  console.log(listing.childNodes[j]);
                   //highlight what the user is looking for
                   listing.childNodes[j].innerHTML = listing.childNodes[j].innerHTML.replace(includeregex, "<span class='CLFactiveinvert'>$&</span>");
                   break;
@@ -270,7 +271,7 @@ function main() {
      "<input type='radio' name='CLFfiltertype' value='words' id='CLFwords' style='vertical-align: middle;' /><span>words&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;</span>" +
      "<input type='radio' name='CLFhidetype' value='gray' id='CLFgray' style='vertical-align: middle;' checked='checked' /><span>gray  </span>" +
      "<input type='radio' name='CLFhidetype' value='hide' id='CLFhide' style='vertical-align: middle;' /><span>hide&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;</span>" +
-     "<input type='checkbox' name='CLFsearchinverttype' value='invert' id='CLFsearchinvert' style='vertical-align: middle;' /><span>invert</span>"
+     "<input type='checkbox' name='CLFdisabletype' value='disable' id='CLFdisable' style='vertical-align: middle;' /><span>disable</span>"
 
    clfBr = document.createElement('br');
 
@@ -280,10 +281,12 @@ function main() {
    clfExcludeText.cols = 48;
    clfExcludeText.rows = 2;
    clfExcludeText.spellcheck = false;
+   clfExcludeText.title = "Filter for listings to exclude"
    clfExcludeText.addEventListener("keyup", updateFilter, false);
 
    //includetext element is exact duplicate of excludetext
    clfIncludeText = clfExcludeText.cloneNode();
+   clfIncludeText.title = "Filter for listings to include"
    clfIncludeText.addEventListener("keyup", updateFilter, false);
 
    //append everything into the div`
@@ -298,9 +301,10 @@ function main() {
    document.getElementById("CLFwords").addEventListener("click", updateFilterType, false);
    document.getElementById("CLFgray").addEventListener("click", updateFilterType, false);
    document.getElementById("CLFhide").addEventListener("click", updateFilterType, false);
-   document.getElementById("CLFsearchinvert").addEventListener("click", updateFilterType, false);
+   document.getElementById("CLFdisable").addEventListener("click", updateFilterType, false);
 
    getUserSettings();
+   disableToggle();
    getListings();
    updateFilter();
 }
