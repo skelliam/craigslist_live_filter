@@ -5,9 +5,15 @@
 // @include        http://*.craigslist.org/search/*
 // ==/UserScript==
 
-// v1.2
+var Settings = {
+   includetext: "",
+   excludetext: "",
+   boolregex: true,
+   boolgray: true,
+   booldisable: true,
+}
 
-var clfDiv, clfBr, clfExcludeText, clfIncludeText, listings;
+var clfDiv, clfBr, clfExcludeText, clfIncludeText, listings, clfSettings;
 
 var cssText = 
   "div#clfDiv {\n" +
@@ -86,30 +92,22 @@ function getListings() {
 
 
 function getUserSettings() {
-   // -- get stored user settings
-   var CLFexcludetext = GM_getValue("CLFexcludetext", "");
-   if (CLFexcludetext != "") {
-     clfExcludeText.value = CLFexcludetext;
-   }
-   var CLFincludetext = GM_getValue("CLFincludetext", "");
-   if (CLFincludetext != "") {
-      clfIncludeText.value = CLFincludetext;
-   }
-
-   var CLFregex = GM_getValue("CLFregex", true);
-   if (!CLFregex) {
-     document.getElementById("CLFwords").checked = true;
-   }
-
-   var CLFgray  = GM_getValue("CLFgray", true);
-   if (!CLFgray) {
-     document.getElementById("CLFhide").checked = true;
+   var temp = GM_getValue("CLFsettings", "");
+   if (temp == "") {
+      //nothing stored yet so let's create a new object
+      //is there a more elegant way to init?
+      clfSettings = new Array(5);
+      clfSettings[0] = eval(uneval(Settings));
+      clfSettings[1] = eval(uneval(Settings));
+      clfSettings[2] = eval(uneval(Settings));
+      clfSettings[3] = eval(uneval(Settings));
+      clfSettings[4] = eval(uneval(Settings));
+   } else {
+      //something is there to we need to de-serialize it
+      clfSettings = eval(temp);  //un-serialize the string
    }
 
-   var CLFdisable = GM_getValue("CLFdisable", false);  //default is false to maintain author's original behavior
-   if (CLFdisable) {
-      document.getElementById('CLFdisable').checked = CLFdisable;
-   }
+   refreshGUI();  //populate fields
 }
 
 function fixRegex(regex) {
@@ -133,9 +131,9 @@ function disableToggle() {
 
 function updateFilterType(event) {
    //store user settings
-   GM_setValue("CLFregex", document.getElementById("CLFregex").checked);
-   GM_setValue("CLFgray", document.getElementById("CLFgray").checked);
-   GM_setValue("CLFdisable", document.getElementById("CLFdisable").checked);
+   //GM_setValue("CLFregex", document.getElementById("CLFregex").checked);
+   //GM_setValue("CLFgray", document.getElementById("CLFgray").checked);
+   //GM_setValue("CLFdisable", document.getElementById("CLFdisable").checked);
    disableToggle();
    updateFilter(event);
 }
@@ -163,6 +161,39 @@ function resetDisplay() {
   }
 }
 
+function limit(val, min, max) {
+   if (val > max)
+      val = max;
+   if (val < min)
+      val = min;
+   return val
+}
+
+function writeUserSettings(preset) {
+
+   preset = limit(preset, 0, 4)
+
+   GM_setValue("CLFexcludetext", clfExcludeText.value);
+   GM_setValue("CLFincludetext", clfIncludeText.value);
+
+   //for presets
+   clfSettings[preset].includetext = clfIncludeText.value;
+   clfSettings[preset].excludetext = clfExcludeText.value;
+   clfSettings[preset].boolregex = document.getElementById("CLFregex").checked;
+   clfSettings[preset].boolgray = document.getElementById("CLFgray").checked;
+   clfSettings[preset].booldisable = document.getElementById("CLFdisable").checked;
+
+   GM_setValue("CLFsettings", uneval(clfSettings));
+}
+
+function refreshGUI() {
+   var preset = getPreset()-1;
+   clfExcludeText.value = clfSettings[preset].excludetext;
+   clfIncludeText.value = clfSettings[preset].includetext;
+   document.getElementById("CLFwords").checked = !clfSettings[preset].boolregex;
+   document.getElementById("CLFhide").checked = !clfSettings[preset].boolgray;
+   document.getElementById("CLFdisable").checked = clfSettings[preset].booldisable;
+}
 
 function updateFilter(event) {
 
@@ -241,8 +272,12 @@ function updateFilter(event) {
          clfExcludeText.style.height = adjustedHeight + "px";
    }
 
-   GM_setValue("CLFexcludetext", clfExcludeText.value);
-   GM_setValue("CLFincludetext", clfIncludeText.value);
+   writeUserSettings(getPreset()-1);
+}
+
+function getPreset() {
+   temp = Number(document.getElementById("CLFpreset").textContent.substr(1,2));
+   return temp;
 }
 
 function addGlobalStyle(css) {
@@ -261,6 +296,21 @@ function addGlobalStyle(css) {
    }
 }
 
+
+function rotatePreset() {
+   //rotate through presets as user clicks box
+   var preset = document.getElementById('CLFpreset');
+   var pval = getPreset();
+
+   if (pval < 5) 
+      pval += 1;
+   else
+      pval = 1;
+
+   preset.textContent="P" + String(pval);
+   refreshGUI();  //populate fields
+}
+
 function main() {
    addGlobalStyle(cssText);
 
@@ -271,7 +321,9 @@ function main() {
      "<input type='radio' name='CLFfiltertype' value='words' id='CLFwords' style='vertical-align: middle;' /><span>words&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;</span>" +
      "<input type='radio' name='CLFhidetype' value='gray' id='CLFgray' style='vertical-align: middle;' checked='checked' /><span>gray  </span>" +
      "<input type='radio' name='CLFhidetype' value='hide' id='CLFhide' style='vertical-align: middle;' /><span>hide&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;</span>" +
-     "<input type='checkbox' name='CLFdisabletype' value='disable' id='CLFdisable' style='vertical-align: middle;' /><span>disable</span>"
+     "<input type='checkbox' name='CLFdisabletype' value='disable' id='CLFdisable' style='vertical-align: middle;' /><span>disable</span>" +
+     "<span>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;</span>" + 
+     "<span title='preset selection' value='1' id='CLFpreset' style='border:solid 1px black;'>P1</span>"
 
    clfBr = document.createElement('br');
 
@@ -302,6 +354,7 @@ function main() {
    document.getElementById("CLFgray").addEventListener("click", updateFilterType, false);
    document.getElementById("CLFhide").addEventListener("click", updateFilterType, false);
    document.getElementById("CLFdisable").addEventListener("click", updateFilterType, false);
+   document.getElementById("CLFpreset").addEventListener("click", rotatePreset, false);
 
    getUserSettings();
    disableToggle();
