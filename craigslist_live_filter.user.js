@@ -97,7 +97,7 @@ function getUserSettings() {
       //nothing stored yet so let's create a new object
       //is there a more elegant way to init?
       clfSettings = new Array(5);
-      clfSettings[0] = eval(uneval(Settings));
+      clfSettings[0] = eval(uneval(Settings));  //init each element in the array as a new Settings object
       clfSettings[1] = eval(uneval(Settings));
       clfSettings[2] = eval(uneval(Settings));
       clfSettings[3] = eval(uneval(Settings));
@@ -134,6 +134,7 @@ function updateFilterType(event) {
    //GM_setValue("CLFregex", document.getElementById("CLFregex").checked);
    //GM_setValue("CLFgray", document.getElementById("CLFgray").checked);
    //GM_setValue("CLFdisable", document.getElementById("CLFdisable").checked);
+   writeUserSettings(getPreset()-1);
    disableToggle();
    updateFilter(event);
 }
@@ -173,8 +174,8 @@ function writeUserSettings(preset) {
 
    preset = limit(preset, 0, 4)
 
-   GM_setValue("CLFexcludetext", clfExcludeText.value);
-   GM_setValue("CLFincludetext", clfIncludeText.value);
+   //GM_setValue("CLFexcludetext", clfExcludeText.value);
+   //GM_setValue("CLFincludetext", clfIncludeText.value);
 
    //for presets
    clfSettings[preset].includetext = clfIncludeText.value;
@@ -182,6 +183,8 @@ function writeUserSettings(preset) {
    clfSettings[preset].boolregex = document.getElementById("CLFregex").checked;
    clfSettings[preset].boolgray = document.getElementById("CLFgray").checked;
    clfSettings[preset].booldisable = document.getElementById("CLFdisable").checked;
+
+   //console.log(clfSettings);
 
    GM_setValue("CLFsettings", uneval(clfSettings));
 }
@@ -193,6 +196,7 @@ function refreshGUI() {
    document.getElementById("CLFwords").checked = !clfSettings[preset].boolregex;
    document.getElementById("CLFhide").checked = !clfSettings[preset].boolgray;
    document.getElementById("CLFdisable").checked = clfSettings[preset].booldisable;
+   disableToggle();
 }
 
 function updateFilter(event) {
@@ -297,7 +301,7 @@ function addGlobalStyle(css) {
 }
 
 
-function rotatePreset() {
+function rotatePreset(event) {
    //rotate through presets as user clicks box
    var preset = document.getElementById('CLFpreset');
    var pval = getPreset();
@@ -309,6 +313,7 @@ function rotatePreset() {
 
    preset.textContent="P" + String(pval);
    refreshGUI();  //populate fields
+   updateFilterType(event);
 }
 
 function main() {
@@ -323,7 +328,7 @@ function main() {
      "<input type='radio' name='CLFhidetype' value='hide' id='CLFhide' style='vertical-align: middle;' /><span>hide&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;</span>" +
      "<input type='checkbox' name='CLFdisabletype' value='disable' id='CLFdisable' style='vertical-align: middle;' /><span>disable</span>" +
      "<span>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;</span>" + 
-     "<span title='preset selection' value='1' id='CLFpreset' style='border:solid 1px black;'>P1</span>"
+     "<span title='preset selection' value='1' id='CLFpreset' style='cursor:pointer; border:solid 1px black;'>P1</span>"
 
    clfBr = document.createElement('br');
 
