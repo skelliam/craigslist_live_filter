@@ -13,7 +13,8 @@ var Settings = {
    booldisable: true,
 }
 
-var clfDiv, clfBr, clfExcludeText, clfIncludeText, listings, clfSettings;
+var clfDiv, clfBr, clfExcludeText, clfIncludeText, clfDisableChk, listings, clfSettings;
+var desiredPreset = 0;
 
 var cssText = 
   "div#clfDiv {\n" +
@@ -93,6 +94,8 @@ function getListings() {
 
 function getUserSettings() {
    var temp = GM_getValue("CLFsettings", "");
+   desiredPreset = Number(GM_getValue("CLFpreset", ""));
+
    if (temp == "") {
       //nothing stored yet so let's create a new object
       //is there a more elegant way to init?
@@ -122,10 +125,16 @@ function fixRegex(regex) {
   return regString;
 }
 
+function animateOpenClose() {
+   if clfExcludeText.
+   
+}
+
 function disableToggle() {
-   var stat = document.getElementById("CLFdisable").checked;
+   var stat = clfDisableChk.checked;
    clfExcludeText.disabled = stat;
    clfIncludeText.disabled = stat;
+   animateOpenClose()
 }
 
 
@@ -134,7 +143,7 @@ function updateFilterType(event) {
    //GM_setValue("CLFregex", document.getElementById("CLFregex").checked);
    //GM_setValue("CLFgray", document.getElementById("CLFgray").checked);
    //GM_setValue("CLFdisable", document.getElementById("CLFdisable").checked);
-   writeUserSettings(getPreset()-1);
+   writeUserSettings(desiredPreset);
    disableToggle();
    updateFilter(event);
 }
@@ -176,13 +185,14 @@ function writeUserSettings(preset) {
 
    //GM_setValue("CLFexcludetext", clfExcludeText.value);
    //GM_setValue("CLFincludetext", clfIncludeText.value);
+   GM_setValue("CLFpreset", desiredPreset);
 
    //for presets
    clfSettings[preset].includetext = clfIncludeText.value;
    clfSettings[preset].excludetext = clfExcludeText.value;
    clfSettings[preset].boolregex = document.getElementById("CLFregex").checked;
    clfSettings[preset].boolgray = document.getElementById("CLFgray").checked;
-   clfSettings[preset].booldisable = document.getElementById("CLFdisable").checked;
+   clfSettings[preset].booldisable = clfDisableChk.checked;
 
    //console.log(clfSettings);
 
@@ -190,13 +200,14 @@ function writeUserSettings(preset) {
 }
 
 function refreshGUI() {
-   var preset = getPreset()-1;
+   var preset = desiredPreset;
    clfExcludeText.value = clfSettings[preset].excludetext;
    clfIncludeText.value = clfSettings[preset].includetext;
    document.getElementById("CLFwords").checked = !clfSettings[preset].boolregex;
    document.getElementById("CLFhide").checked = !clfSettings[preset].boolgray;
-   document.getElementById("CLFdisable").checked = clfSettings[preset].booldisable;
+   clfDisableChk.checked = clfSettings[preset].booldisable;
    disableToggle();
+   updatePresetLabel();
 }
 
 function updateFilter(event) {
@@ -205,7 +216,7 @@ function updateFilter(event) {
    resetDisplay();
 
    var filterGray = document.getElementById("CLFgray").checked;
-   var filterDisable = document.getElementById("CLFdisable").checked;
+   var filterDisable = clfDisableChk.checked;
 
    // If blank, leave page "cleaned up"
    if (     ((clfExcludeText.value == "") && (clfIncludeText.value == ""))
@@ -276,12 +287,12 @@ function updateFilter(event) {
          clfExcludeText.style.height = adjustedHeight + "px";
    }
 
-   writeUserSettings(getPreset()-1);
+   writeUserSettings(desiredPreset);
 }
 
-function getPreset() {
-   temp = Number(document.getElementById("CLFpreset").textContent.substr(1,2));
-   return temp;
+function updatePresetLabel() {
+   var preset = document.getElementById('CLFpreset');
+   preset.textContent="P" + String(desiredPreset+1);  //user index value 1-5
 }
 
 function addGlobalStyle(css) {
@@ -303,15 +314,13 @@ function addGlobalStyle(css) {
 
 function rotatePreset(event) {
    //rotate through presets as user clicks box
-   var preset = document.getElementById('CLFpreset');
-   var pval = getPreset();
+   //console.log(desiredPreset);
 
-   if (pval < 5) 
-      pval += 1;
+   if (desiredPreset < 4) 
+      desiredPreset += 1;
    else
-      pval = 1;
+      desiredPreset = 0;
 
-   preset.textContent="P" + String(pval);
    refreshGUI();  //populate fields
    updateFilterType(event);
 }
@@ -354,12 +363,16 @@ function main() {
 
    document.body.appendChild(clfDiv);
 
+   clfDisableChk = document.getElementById("CLFdisable");
+   clfDisableChk.addEventListener("click", updateFilterType, false);
+
    document.getElementById("CLFregex").addEventListener("click", updateFilterType, false);
    document.getElementById("CLFwords").addEventListener("click", updateFilterType, false);
    document.getElementById("CLFgray").addEventListener("click", updateFilterType, false);
    document.getElementById("CLFhide").addEventListener("click", updateFilterType, false);
-   document.getElementById("CLFdisable").addEventListener("click", updateFilterType, false);
    document.getElementById("CLFpreset").addEventListener("click", rotatePreset, false);
+
+
 
    getUserSettings();
    disableToggle();
