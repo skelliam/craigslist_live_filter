@@ -2,6 +2,7 @@
 // @name           Craiglist Live Filter
 // @namespace      srawlins
 // @description    Filter out listings with given words on Craigslist
+// @require        http://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js
 // @include        http://*.craigslist.org/search/*
 // ==/UserScript==
 
@@ -13,7 +14,7 @@ var Settings = {
    booldisable: true,
 }
 
-var clfDiv, clfBr, clfExcludeText, clfIncludeText, clfDisableChk, listings, clfSettings;
+var jExcludeText, jIncludeText, listings, clfSettings;
 var desiredPreset = 0;
 
 var cssText = 
@@ -76,19 +77,9 @@ var cssText =
   "}\n";
 
 function getListings() {
-   listings = document.evaluate("//blockquote[3]/p",
-       document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
-     
-   for (var i = listings.snapshotLength - 1; i >= 0; i--) {
-     var listing = listings.snapshotItem(i);
-     for (var j = listing.childNodes.length - 1; j >= 0; j--) {
-       if ( listing.childNodes[j].nodeName == "A" ) {
-         listing.childNodes[j].innerHTML = listing.childNodes[j].innerHTML.toLowerCase();
-         //listing.childNodes[j].innerHTML = listing.childNodes[j].innerHTML.replace(/[\x80-\xFFFF]/g, "X");
-       }
-       if ( listing.childNodes[j].nodeName == "FONT" ) { listing.childNodes[j].innerHTML = listing.childNodes[j].innerHTML.toLowerCase(); }
-     }
-   }
+   listings = $("#toc_rows > p.row").find("a,font").each( function() {
+      $(this).html($(this).html().toLowerCase());
+   });
 }
 
 
@@ -114,8 +105,7 @@ function getUserSettings() {
 }
 
 function fixRegex(regex) {
-  var filterRegex = document.getElementById("CLFregex").checked;
-  if ( filterRegex ) {
+  if ( $("#CLFregex").prop('checked') ) {
     //detect and tweak bad input
     regString = regex.replace(/[|(]+$/, "")
   } else {
@@ -126,14 +116,11 @@ function fixRegex(regex) {
 }
 
 function animateOpenClose() {
-   if clfExcludeText.
-   
 }
 
 function disableToggle() {
-   var stat = clfDisableChk.checked;
-   clfExcludeText.disabled = stat;
-   clfIncludeText.disabled = stat;
+   jExcludeText.disabled = $("#CLFdisable").prop("checked");;
+   jIncludeText.disabled = $("#CLFdisable").prop("checked");;
    animateOpenClose()
 }
 
@@ -150,12 +137,12 @@ function updateFilterType(event) {
 
 function resetDisplay() {
   //---Reset display, who knows what the user typed/untyped!
-  for (var i = listings.snapshotLength - 1; i >= 0; i--) {
-     var listing = listings.snapshotItem(i);
-     listing.setAttribute("class", 'filterOK');
-     listing.style.display = "block";
-  }
-  
+
+  listings.each( function() {
+     $(this).attr('class', 'filterOK');
+     //$(this).css('display', 'block');
+  });
+
   var inversions = document.evaluate("//*[@class='CLFinvert']",
     document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
   for (var i = inversions.snapshotLength - 1; i >= 0; i--) {
@@ -183,16 +170,16 @@ function writeUserSettings(preset) {
 
    preset = limit(preset, 0, 4)
 
-   //GM_setValue("CLFexcludetext", clfExcludeText.value);
-   //GM_setValue("CLFincludetext", clfIncludeText.value);
+   //GM_setValue("jExcludeText", jExcludeText.value);
+   //GM_setValue("jIncludeText", jIncludeText.value);
    GM_setValue("CLFpreset", desiredPreset);
 
    //for presets
-   clfSettings[preset].includetext = clfIncludeText.value;
-   clfSettings[preset].excludetext = clfExcludeText.value;
-   clfSettings[preset].boolregex = document.getElementById("CLFregex").checked;
-   clfSettings[preset].boolgray = document.getElementById("CLFgray").checked;
-   clfSettings[preset].booldisable = clfDisableChk.checked;
+   clfSettings[preset].includetext = jIncludeText.val();
+   clfSettings[preset].excludetext = jExcludeText.val();
+   clfSettings[preset].boolregex = $("#CLFregex").prop("checked");
+   clfSettings[preset].boolgray = $("#CLFgray").prop("checked");
+   clfSettings[preset].booldisable = $("#CLFdisable").prop("checked");
 
    //console.log(clfSettings);
 
@@ -201,11 +188,14 @@ function writeUserSettings(preset) {
 
 function refreshGUI() {
    var preset = desiredPreset;
-   clfExcludeText.value = clfSettings[preset].excludetext;
-   clfIncludeText.value = clfSettings[preset].includetext;
-   document.getElementById("CLFwords").checked = !clfSettings[preset].boolregex;
-   document.getElementById("CLFhide").checked = !clfSettings[preset].boolgray;
-   clfDisableChk.checked = clfSettings[preset].booldisable;
+   jExcludeText.val(clfSettings[preset].excludetext);
+   jIncludeText.val(clfSettings[preset].includetext);
+
+   $("#CLFwords").prop("checked", !clfSettings[preset].boolregex);
+   $("#CLFhide").prop("checked", !clfSettings[preset].boolgray);
+
+   $("#CLFdisable").prop("checked", clfSettings[preset].booldisable);
+
    disableToggle();
    updatePresetLabel();
 }
@@ -215,94 +205,82 @@ function updateFilter(event) {
    //reset all of the existing mods to the display
    resetDisplay();
 
-   var filterGray = document.getElementById("CLFgray").checked;
-   var filterDisable = clfDisableChk.checked;
+   var filterGray = $("#CLFgray").prop("checked");
+   var filterDisable = $("#CLFdisable").prop("checked");
 
    // If blank, leave page "cleaned up"
-   if (     ((clfExcludeText.value == "") && (clfIncludeText.value == ""))
+   if (     ((jExcludeText.val() == "") && (jIncludeText.val() == ""))
          || (filterDisable)
       ) { 
      return false; 
    }
 
 
-   regString = fixRegex(clfExcludeText.value);
+   regString = fixRegex(jExcludeText.val());
    var excluderegex = new RegExp(regString);
-   regString = fixRegex(clfIncludeText.value);
+   regString = fixRegex(jIncludeText.val());
    var includeregex = new RegExp(regString);
 
-   for (var i = listings.snapshotLength - 1; i >= 0; i--) {
-      var listing = listings.snapshotItem(i);
-      for (var j = listing.childNodes.length - 1; j >= 0; j--) {
-         if (    listing.childNodes[j].nodeName == "A"
-              || listing.childNodes[j].nodeName == "FONT" ) 
-         {
-
-            if (clfExcludeText.value != "") {
-               //discard what the user wants to exclude
-               if ( listing.childNodes[j].innerHTML.match(excluderegex) ) {
-                  //make what the user wants to exclude gray or remove it
-                  if (filterGray) {
-                     listing.setAttribute("class", 'filterOut');
-                     listing.childNodes[j].innerHTML = listing.childNodes[j].innerHTML.replace(excluderegex, "<span class='CLFinvert'>$&</span>");
-                     break;  //exclude matched and we are done!
-                  } else {
-                     listing.style.display = "none";
-                     break;
-                  }
-               } 
+   listings.each(function() {
+      if (jExcludeText.val() != "") {
+         //discard what the user wants to exclude
+         if ( $(this).html().match(excluderegex) ) {
+            //make what the user wants to exclude gray or remove it
+            if (filterGray) {
+               $(this).attr("class", 'filterOut');
+               $(this).html($(this).html().replace(excluderegex, "<span class='CLFinvert'>$&</span>"));
+               return;  //exclude matched and we are done!
+            } else {
+               $(this).css('display', 'none');
+               return;
             }
+         } 
+      }
 
-            if (clfIncludeText.value != "") {
-               // keep want the user wants to include
+      if (jIncludeText.val() != "") {
+         // keep want the user wants to include
 
-               if ( listing.childNodes[j].innerHTML.match(includeregex) ) {
-                  //highlight what the user is looking for
-                  listing.childNodes[j].innerHTML = listing.childNodes[j].innerHTML.replace(includeregex, "<span class='CLFactiveinvert'>$&</span>");
-                  break;
-               } else {
-                  //make the other stuff gray or remove it
-                  if (filterGray) {
-                     //listing.setAttribute("class", 'filterOut');
-                     break;
-                  } else {
-                     listing.style.display = "none";
-                     break;
-                  }
-               }
+         if ( $(this).html().match(includeregex) ) {
+            //highlight what the user is looking for
+            $(this).html($(this).html().replace(includeregex, "<span class='CLFactiveinvert'>$&</span>"));
+            return;
+         } else {
+            //make the other stuff gray or remove it
+            if (filterGray) {
+               //listing.setAttribute("class", 'filterOut');
+               return;
+            } else {
+               $(this).css('display', 'none');
+               return;
             }
-
          }
       }
-   }
+   });
 
-   var adjustedHeight = clfExcludeText.clientHeight;
+   var adjustedHeight = jExcludeText.clientHeight;
    var maxHeight = 500
 
    if ( !maxHeight || maxHeight > adjustedHeight ) {
-      adjustedHeight = Math.max(clfExcludeText.scrollHeight, adjustedHeight);
+      adjustedHeight = Math.max(jExcludeText.scrollHeight, adjustedHeight);
       if ( maxHeight )
          adjustedHeight = Math.min(maxHeight, adjustedHeight+5);
-      if ( adjustedHeight > clfExcludeText.clientHeight+5 )
-         clfExcludeText.style.height = adjustedHeight + "px";
+      if ( adjustedHeight > jExcludeText.clientHeight+5 )
+         jExcludeText.style.height = adjustedHeight + "px";
    }
 
    writeUserSettings(desiredPreset);
 }
 
 function updatePresetLabel() {
-   var preset = document.getElementById('CLFpreset');
-   preset.textContent="P" + String(desiredPreset+1);  //user index value 1-5
+   $("#CLFpreset").text("P" + String(desiredPreset+1));  //user index value 1-5
 }
 
 function addGlobalStyle(css) {
    try {
-      var elmHead, elmStyle;
-      elmHead = document.getElementsByTagName('head')[0];
-      elmStyle = document.createElement('style');
-      elmStyle.type = 'text/css';
-      elmHead.appendChild(elmStyle);
-      elmStyle.innerHTML = css;
+      var elmStyle;
+      elmStyle = $("<style>").prop("type", "text/css");
+      elmStyle.html(css);
+      $(document.head).append(elmStyle);
    } catch (e) {
       if (!document.styleSheets.length) {
          document.createStyleSheet();
@@ -328,51 +306,47 @@ function rotatePreset(event) {
 function main() {
    addGlobalStyle(cssText);
 
-   clfDiv = document.createElement('div');
-   clfDiv.setAttribute("id", "clfDiv");
-   clfDiv.innerHTML = "<span>Filter:   </span>" +
-     "<input type='radio' name='CLFfiltertype' value='regex' id='CLFregex' style='vertical-align: middle;' checked='checked' /><span>regex  </span>" +
-     "<input type='radio' name='CLFfiltertype' value='words' id='CLFwords' style='vertical-align: middle;' /><span>words&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;</span>" +
-     "<input type='radio' name='CLFhidetype' value='gray' id='CLFgray' style='vertical-align: middle;' checked='checked' /><span>gray  </span>" +
-     "<input type='radio' name='CLFhidetype' value='hide' id='CLFhide' style='vertical-align: middle;' /><span>hide&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;</span>" +
-     "<input type='checkbox' name='CLFdisabletype' value='disable' id='CLFdisable' style='vertical-align: middle;' /><span>disable</span>" +
-     "<span>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;</span>" + 
-     "<span title='preset selection' value='1' id='CLFpreset' style='cursor:pointer; border:solid 1px black;'>P1</span>"
+   var jDiv = $("<div id='clfDiv'>");
+   jDiv.append($("<span>Filter:   </span>"));
+   jDiv.append($("<input type='radio' name='CLFfiltertype' value='regex' id='CLFregex' style='vertical-align: middle;' checked='checked' />"));
 
-   clfBr = document.createElement('br');
+   jDiv.append($("<span>regex  </span>"));
+   jDiv.append($("<input type='radio' name='CLFfiltertype' value='words' id='CLFwords' style='vertical-align: middle;' />"));
+
+   jDiv.append($("<span>words&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;</span>"));
+   jDiv.append($("<input type='radio' name='CLFhidetype' value='gray' id='CLFgray' style='vertical-align: middle;' checked='checked' />"));
+
+   jDiv.append($("<span>gray  </span>"));
+   jDiv.append($("<input type='radio' name='CLFhidetype' value='hide' id='CLFhide' style='vertical-align: middle;' />"));
+
+   jDiv.append($("<span>hide&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;</span>"));
+   jDiv.append($("<input type='checkbox' name='CLFdisabletype' value='disable' id='CLFdisable' style='vertical-align: middle;' />"));
+
+   jDiv.append($("<span>disable</span>"));
+   jDiv.append($("<span>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;</span>"));
+
+   jDiv.append($("<span title='preset selection' value='1' id='CLFpreset' style='cursor:pointer; border:solid 1px black;'>P1</span>"));
+   jDiv.append("<br>");
 
    //create exclude text element with properties
-   clfExcludeText = document.createElement('textarea');
+   jExcludeText = ($("<textarea cols='48' rows='2' spellcheck='false' title='Filter for listings to exclude'/>"));
+   jExcludeText.keyup(updateFilter);
+   jDiv.append(jExcludeText);
 
-   clfExcludeText.cols = 48;
-   clfExcludeText.rows = 2;
-   clfExcludeText.spellcheck = false;
-   clfExcludeText.title = "Filter for listings to exclude"
-   clfExcludeText.addEventListener("keyup", updateFilter, false);
+   jDiv.append("<br>");
 
-   //includetext element is exact duplicate of excludetext
-   clfIncludeText = clfExcludeText.cloneNode();
-   clfIncludeText.title = "Filter for listings to include"
-   clfIncludeText.addEventListener("keyup", updateFilter, false);
+   jIncludeText = jExcludeText.clone(true);
+   jIncludeText.prop('title', "Filter for listings to include");
+   jDiv.append(jIncludeText);
 
-   //append everything into the div`
-   clfDiv.appendChild(clfBr);
-   clfDiv.appendChild(clfExcludeText);
-   clfDiv.appendChild(clfBr.cloneNode());
-   clfDiv.appendChild(clfIncludeText);
+   $(document.body).append(jDiv);
 
-   document.body.appendChild(clfDiv);
-
-   clfDisableChk = document.getElementById("CLFdisable");
-   clfDisableChk.addEventListener("click", updateFilterType, false);
-
-   document.getElementById("CLFregex").addEventListener("click", updateFilterType, false);
-   document.getElementById("CLFwords").addEventListener("click", updateFilterType, false);
-   document.getElementById("CLFgray").addEventListener("click", updateFilterType, false);
-   document.getElementById("CLFhide").addEventListener("click", updateFilterType, false);
-   document.getElementById("CLFpreset").addEventListener("click", rotatePreset, false);
-
-
+   $("#CLFdisable").click(updateFilterType);
+   $("#CLFregex").click(updateFilterType);
+   $("#CLFwords").click(updateFilterType);
+   $("#CLFgray").click(updateFilterType);
+   $("#CLFhide").click(updateFilterType);
+   $("#CLFpreset").click(rotatePreset);
 
    getUserSettings();
    disableToggle();
