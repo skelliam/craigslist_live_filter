@@ -77,9 +77,7 @@ var cssText =
   "}\n";
 
 function getListings() {
-   listings = $("#toc_rows > p.row").find("a,font").each( function() {
-      $(this).html($(this).html().toLowerCase());
-   });
+   listings = $("#toc_rows > p.row");  
 }
 
 
@@ -127,9 +125,6 @@ function disableToggle() {
 
 function updateFilterType(event) {
    //store user settings
-   //GM_setValue("CLFregex", document.getElementById("CLFregex").checked);
-   //GM_setValue("CLFgray", document.getElementById("CLFgray").checked);
-   //GM_setValue("CLFdisable", document.getElementById("CLFdisable").checked);
    writeUserSettings(desiredPreset);
    disableToggle();
    updateFilter(event);
@@ -140,21 +135,26 @@ function resetDisplay() {
 
   listings.each( function() {
      $(this).attr('class', 'filterOK');
-     //$(this).css('display', 'block');
+     $(this).css('display', 'inherit');  //restore stuff that was possibly hidden
   });
 
-  var inversions = document.evaluate("//*[@class='CLFinvert']",
-    document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
-  for (var i = inversions.snapshotLength - 1; i >= 0; i--) {
-     var inversion = inversions.snapshotItem(i);
-     inversion.parentNode.replaceChild(document.createTextNode(inversion.innerHTML), inversion);
-  }
+  //inversions are text inversions
+  //commenting this out for the jQuery version of this script, I'm looking at the entire 
+  //internal text of the listing, can't really do inversions anymore --Skellenger 4/10/13
+  if (0) {
+     var inversions = document.evaluate("//*[@class='CLFinvert']",
+       document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+     for (var i = inversions.snapshotLength - 1; i >= 0; i--) {
+        var inversion = inversions.snapshotItem(i);
+        inversion.parentNode.replaceChild(document.createTextNode(inversion.innerHTML), inversion);
+     }
 
-  var inversions = document.evaluate("//*[@class='CLFactiveinvert']",
-    document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
-  for (var i = inversions.snapshotLength - 1; i >= 0; i--) {
-     var inversion = inversions.snapshotItem(i);
-     inversion.parentNode.replaceChild(document.createTextNode(inversion.innerHTML), inversion);
+     var inversions = document.evaluate("//*[@class='CLFactiveinvert']",
+       document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+     for (var i = inversions.snapshotLength - 1; i >= 0; i--) {
+        var inversion = inversions.snapshotItem(i);
+        inversion.parentNode.replaceChild(document.createTextNode(inversion.innerHTML), inversion);
+     }
   }
 }
 
@@ -217,18 +217,19 @@ function updateFilter(event) {
 
 
    regString = fixRegex(jExcludeText.val());
-   var excluderegex = new RegExp(regString);
+   var excluderegex = new RegExp(regString, 'i');  //'i' means case-insensitive
    regString = fixRegex(jIncludeText.val());
-   var includeregex = new RegExp(regString);
+   var includeregex = new RegExp(regString, 'i');
 
    listings.each(function() {
       if (jExcludeText.val() != "") {
          //discard what the user wants to exclude
-         if ( $(this).html().match(excluderegex) ) {
+         if ( $(this).text().match(excluderegex) ) {
             //make what the user wants to exclude gray or remove it
             if (filterGray) {
-               $(this).attr("class", 'filterOut');
-               $(this).html($(this).html().replace(excluderegex, "<span class='CLFinvert'>$&</span>"));
+               $(this).attr("class", "filterOut");
+               //highlighting the text doesn't work when looking at the entire innertext
+               //$(this).html($(this).html().replace(excluderegex, "<span class='CLFinvert'>$&</span>"));
                return;  //exclude matched and we are done!
             } else {
                $(this).css('display', 'none');
@@ -240,14 +241,15 @@ function updateFilter(event) {
       if (jIncludeText.val() != "") {
          // keep want the user wants to include
 
-         if ( $(this).html().match(includeregex) ) {
+         if ( $(this).text().match(includeregex) ) {
             //highlight what the user is looking for
-            $(this).html($(this).html().replace(includeregex, "<span class='CLFactiveinvert'>$&</span>"));
+            //highlighting the text dosn't work when looking at the entire innertext
+            //$(this).html($(this).html().replace(includeregex, "<span class='CLFactiveinvert'>$&</span>"));
             return;
          } else {
             //make the other stuff gray or remove it
             if (filterGray) {
-               //listing.setAttribute("class", 'filterOut');
+               $(this).attr("class", "filterOut");
                return;
             } else {
                $(this).css('display', 'none');
@@ -257,16 +259,18 @@ function updateFilter(event) {
       }
    });
 
-   var adjustedHeight = jExcludeText.clientHeight;
-   var maxHeight = 500
+   //not sure what this stuff was originally for (Skellenger 4/10/13)
 
-   if ( !maxHeight || maxHeight > adjustedHeight ) {
-      adjustedHeight = Math.max(jExcludeText.scrollHeight, adjustedHeight);
-      if ( maxHeight )
-         adjustedHeight = Math.min(maxHeight, adjustedHeight+5);
-      if ( adjustedHeight > jExcludeText.clientHeight+5 )
-         jExcludeText.style.height = adjustedHeight + "px";
-   }
+   //var adjustedHeight = jExcludeText.clientHeight;
+   //var maxHeight = 500
+
+   //if ( !maxHeight || maxHeight > adjustedHeight ) {
+   //   adjustedHeight = Math.max(jExcludeText.scrollHeight, adjustedHeight);
+   //   if ( maxHeight )
+   //      adjustedHeight = Math.min(maxHeight, adjustedHeight+5);
+   //   if ( adjustedHeight > jExcludeText.clientHeight+5 )
+   //      jExcludeText.style.height = adjustedHeight + "px";
+   //}
 
    writeUserSettings(desiredPreset);
 }
