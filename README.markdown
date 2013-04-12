@@ -4,14 +4,18 @@ v 1.2
 
 Summary
 -------
-This script adds a filter-out box, fixed in the bottom right of all craigslist pages. It allows you to type in words you wish to filter out of the current results. Oh, it also sets all listings to ALL LOWERCASE. If I wanted to be harsh, I would just filter out any listings with a single word written in all caps. Gah! And the filter text and options are persistent, even if you close your browser.
+A fork of https://github.com/srawlins/craigslist_live_filter
+
+This script adds two boxes to the lower right of craigslist search pages.  The script adds a filter-out box (top) and a filter-in box (bottom).  Listings are not set to all lowercase, instead I use case-insensitive searching.
+
+Search options will persist after you close your browser.  You can save up to five 'preset' searches and they'll all persist even after closing the browser.  This lets you save your Jeep Wranger search separate from a search for a Dell Laptop or Ikea furniture.
 
 Features at a glance:
 
-+ downcase all letters in all listings
 + filter out listings by regex or by lists of words
++ filter in listings by regex or by lists of words
 + gray out filtered-out listings, or hide them
-+ persistent settings and filter text (uses Greasemonkey's storage)
++ persistent settings (up to five different) and filter text (uses Greasemonkey's storage)
 
 How to Use
 ----------
